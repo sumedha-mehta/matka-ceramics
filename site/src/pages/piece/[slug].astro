@@ -17,16 +17,42 @@ const shots = [p.data.image, ...(p.data.gallery ?? [])];
   tell a candle from a vase. Use the piece's own words instead.
 */
 const body = (p.body ?? '').trim().replace(/\s+/g, ' ');
-const description = body
-  ? `${body} Handmade in Brooklyn, one of a kind. $${p.data.price}.`
+
+// The piece descriptions are written lowercase, which reads fine set under the
+// photograph but looks like a mistake in a search result, where the sentence
+// stands on its own. Only the snippet is capitalised; the page keeps her words.
+// Some descriptions already end in a full stop and some do not, so add one
+// only where it is missing rather than producing "finished.." in the snippet.
+const sentence = body
+  ? body.charAt(0).toUpperCase() + body.slice(1).replace(/[.!?]$/, '') + '.'
+  : '';
+
+const description = sentence
+  ? `${sentence} Handmade in Brooklyn, one of a kind. $${p.data.price}.`
   : `${p.data.title}, handmade in Brooklyn by Matka Ceramics. One of a kind. $${p.data.price}.`;
 
-const schema = {
-  '@context': 'https://schema.org',
+/*
+  Alt text. Every shot used to carry the title and nothing else, so a piece with
+  three photographs published the same five words three times: useless to a
+  screen reader deciding which image to describe, and nothing for image search
+  to index beyond a name it already has in the heading. The piece's own words
+  describe what is actually in the frame, and the extra shots say which view
+  they are rather than repeating the first.
+*/
+const altFor = (i: number) => {
+  // Her words exactly as written, not the capitalised snippet variant.
+  const base = body ? `${p.data.title}: ${body}` : p.data.title;
+  return i === 0 ? base : `${p.data.title}, view ${i + 1}`;
+};
+
+const product = {
   '@type': 'Product',
   name: p.data.title,
   description: body || p.data.title,
-  image: new URL(p.data.image.src, Astro.site).href,
+  // Every photograph, not just the first: Google picks the one it wants.
+  image: shots.map((s) => new URL(s.src, Astro.site).href),
+  // Each piece is one of a kind, so the slug is a stable, unique identifier.
+  sku: p.id,
   brand: { '@type': 'Brand', name: 'Matka Ceramics' },
   offers: {
     '@type': 'Offer',
@@ -37,7 +63,48 @@ const schema = {
       ? 'https://schema.org/SoldOut'
       : 'https://schema.org/InStock',
     itemCondition: 'https://schema.org/NewCondition',
+    seller: { '@type': 'Organization', name: 'Matka Ceramics' },
+    /*
+      The flat rate and the two countries Stripe is configured to ship to, so a
+      rich result can show the real delivery cost instead of leaving it unknown.
+      No transit estimate here on purpose: the page copy and the Stripe checkout
+      currently quote different numbers, and publishing a third would only add
+      another version of the truth.
+    */
+    shippingDetails: {
+      '@type': 'OfferShippingDetails',
+      shippingRate: { '@type': 'MonetaryAmount', value: 10, currency: 'USD' },
+      shippingDestination: [
+        { '@type': 'DefinedRegion', addressCountry: 'US' },
+        { '@type': 'DefinedRegion', addressCountry: 'CA' },
+      ],
+    },
   },
+};
+
+// Lets the search result show Ceramics › the piece instead of a bare URL.
+const breadcrumbs = {
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    {
+      '@type': 'ListItem',
+      position: 1,
+      name: 'Ceramics',
+      item: 'https://www.matkaceramics.store/',
+    },
+    {
+      '@type': 'ListItem',
+      position: 2,
+      name: p.data.title,
+      item: `https://www.matkaceramics.store/piece/${p.id}/`,
+    },
+  ],
+};
+
+// One script carrying both, which is what @graph is for.
+const schema = {
+  '@context': 'https://schema.org',
+  '@graph': [product, breadcrumbs],
 };
 ---
 
@@ -54,7 +121,7 @@ const schema = {
         shots.map((shot, i) => (
           <Image
             src={shot}
-            alt={p.data.title}
+            alt={altFor(i)}
             widths={[480, 960, 1400]}
             sizes="(max-width: 460px) 100vw, 55vw"
             loading={i === 0 ? 'eager' : 'lazy'}

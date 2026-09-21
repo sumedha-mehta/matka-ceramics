@@ -7,6 +7,17 @@ const products = (await getCollection('products')).sort(
   (a, b) => a.data.order - b.data.order,
 );
 
+/*
+  Alt text for the grid. The title alone was already sitting directly under
+  each photograph as visible text, so repeating it in the alt described the
+  image to nobody and gave image search the same words twice. The piece's own
+  description says what is actually in the picture.
+*/
+const altFor = (p: (typeof products)[number]) => {
+  const body = (p.body ?? '').trim().replace(/\s+/g, ' ');
+  return body ? `${p.data.title}: ${body}` : p.data.title;
+};
+
 // Tells Google what the grid is, rather than leaving it to infer a list of
 // images. Prices and availability come straight from the same content files
 // the shop is built from, so they cannot drift.
@@ -58,7 +69,7 @@ const schema = {
                     : 'mk-shot'
                 }
                 src={p.data.image}
-                alt={p.data.title}
+                alt={altFor(p)}
                 widths={[280, 560, 840]}
                 sizes="(max-width: 460px) 100vw, (max-width: 820px) 50vw, (max-width: 1100px) 33vw, 25vw"
                 loading={p.data.order <= 4 ? 'eager' : 'lazy'}
