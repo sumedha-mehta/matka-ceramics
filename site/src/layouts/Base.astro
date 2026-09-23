@@ -38,6 +38,31 @@ const canonical = new URL(path, Astro.site ?? 'https://www.matkaceramics.store')
 const ogImage = new URL(image, Astro.site ?? 'https://www.matkaceramics.store');
 
 /*
+  Cloudflare Web Analytics.
+
+  Instagram can say how many people tapped through to the shop. Nothing could
+  say what happened once they arrived, so a visit that stalled on the homepage
+  and one that reached the cart and stopped looked exactly the same from here.
+  This closes that gap, and only that gap: it counts page views, referrers and
+  which pages get looked at. It cannot tell you which post earned a sale.
+
+  Cookieless. No cookie, no local storage, no identifier following anyone
+  between sessions or sites, which is why the shop still needs no consent
+  banner and why this was worth choosing over the analytics that would answer
+  more by tracking people.
+
+  The token is not a credential. It names the site the measurements belong to
+  and is readable in the HTML of every page, so it belongs here in the open
+  rather than in a dashboard field nobody can read back. Blank means no beacon
+  is emitted at all.
+
+  Inline rather than injected at Cloudflare's edge because the automatic path
+  needs the zone on Cloudflare nameservers, and the domain stays on IONOS so
+  its email keeps working.
+*/
+const CF_BEACON_TOKEN = '0d56819ed1c6452b85c7b7a158d31e9d';
+
+/*
   Structured data. Without it Google treats the shop as an undifferentiated
   page; with it, pieces can appear with a price and availability attached.
 */
@@ -201,5 +226,17 @@ const jsonLd = schema ?? defaultSchema;
         document.dispatchEvent(new CustomEvent('matka:cart-changed'));
       })();
     </script>
+
+    {/* Last in the body and deferred, so counting visitors never delays a
+        photograph loading for one. */}
+    {
+      CF_BEACON_TOKEN && (
+        <script
+          defer
+          src="https://static.cloudflareinsights.com/beacon.min.js"
+          data-cf-beacon={JSON.stringify({ token: CF_BEACON_TOKEN })}
+        />
+      )
+    }
   </body>
 </html>
