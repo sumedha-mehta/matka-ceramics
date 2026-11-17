@@ -6,7 +6,7 @@
 
 backend:
   name: github
-  repo: sumedham/matka-ceramics
+  repo: sumedha-mehta/matka-ceramics
   branch: main
   # The auth worker. Sveltia has no hosted sign-in service, so this is a small
   # Cloudflare Worker on Sumedha's own account that completes GitHub OAuth.

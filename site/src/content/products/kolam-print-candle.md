@@ -1,7 +1,7 @@
 ---
 title: "Kolam print candle"
 price: 50
-soldOut: false
+soldOut: true
 image: "../../assets/products/kolam-print-candle.jpg"
 order: 1
 ---
